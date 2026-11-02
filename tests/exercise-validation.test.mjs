@@ -37,10 +37,11 @@ test('exercise metadata passes structural and safety validation', () => {
   assert.doesNotThrow(() => validateExercise(repositoryRoot));
 });
 
-test('starter scaffold does not pass learner grading before implementation', () => {
+test('implemented application passes learner grading', () => {
   for (const name of ['step1-architecture', 'step2-data', 'step3-api', 'step4-frontend']) {
-    assert.throws(() => checks[name](repositoryRoot));
+    assert.doesNotThrow(() => checks[name](repositoryRoot), `${name} should accept the implementation`);
   }
+  assert.doesNotThrow(() => checkFinalComposition(repositoryRoot));
 });
 
 test('completed learner fixture satisfies step 1 through final composition checks', () => {
@@ -213,14 +214,16 @@ test('workflow-level write permissions are rejected', () => {
 
 test('step one requires a completed architecture plan', () => {
   const root = copyAll();
-  assert.throws(() => checks['step1-architecture'](root), /Architecture plan must complete/);
   const architecture = path.join(root, 'docs/architecture.md');
-  fs.writeFileSync(architecture, fs.readFileSync(architecture, 'utf8').replaceAll('decision:', 'decision: keep boundaries clear').replaceAll('approach:', 'approach: implement from tests'));
+  fs.writeFileSync(architecture, fs.readFileSync(architecture, 'utf8').replaceAll(/^- (.*(?:decision|approach)):\s*.+$/gm, '- $1:'));
+  assert.throws(() => checks['step1-architecture'](root), /Architecture plan must complete/);
+  fs.writeFileSync(architecture, fs.readFileSync(architecture, 'utf8').replaceAll(/^- (.*(?:decision|approach)):\s*$/gm, '- $1: Keep boundaries clear and use contract tests.'));
   assert.doesNotThrow(() => checks['step1-architecture'](root));
 });
 
 test('data grader rejects placeholder seed script', () => {
   const root = copyAll();
+  write(root, 'octofit-tracker/backend/src/scripts/seed.ts', '// TODO: learners implement seed data\nexport async function seed() {}\n');
   assert.throws(() => checks['step2-data'](root), /required validation|placeholder/);
 });
 
